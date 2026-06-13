@@ -15,6 +15,7 @@ import LeaderboardPage from './features/leaderboard/LeaderboardPage'
 import ChatPage from './features/chat/ChatPage'
 import ActivityPage from './features/activity/ActivityPage'
 import ProfilePage from './features/profile/ProfilePage'
+import AdminPage from './features/admin/AdminPage'
 import OnboardingPage from './features/onboarding/OnboardingPage'
 import Spinner from './components/Spinner'
 import Logo from './components/Logo'
@@ -101,6 +102,7 @@ export default function App() {
       <Route path="/leagues" element={<LeaguesPage />} />
       <Route path="/unirse/:code" element={<JoinPage />} />
       <Route path="/perfil" element={<ProfilePage />} />
+      <Route path="/admin" element={<AdminPage />} />
       <Route path="/l/:leagueId" element={<LeagueLayout />}>
         <Route index element={<Navigate to="partidos" replace />} />
         <Route path="partidos" element={<MatchesPage />} />

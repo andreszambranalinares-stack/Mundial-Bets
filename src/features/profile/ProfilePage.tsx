@@ -15,6 +15,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState('')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   // Avatar pendiente de guardar (preview local antes de subir)
   const [pendingFile, setPendingFile] = useState<File | null>(null)
@@ -41,6 +42,12 @@ export default function ProfilePage() {
         setName(data.display_name ?? '')
         setAvatarUrl(data.avatar_url)
       }
+      // ¿Eres admin? Lo eres si has creado (eres owner de) alguna liga.
+      const { count } = await supabase
+        .from('leagues')
+        .select('id', { count: 'exact', head: true })
+        .eq('owner_id', user!.id)
+      setIsAdmin((count ?? 0) > 0)
       setLoading(false)
     }
     load()
@@ -148,6 +155,25 @@ export default function ProfilePage() {
           {savingProfile ? '...' : 'Guardar cambios'}
         </button>
       </div>
+
+      {/* Administración (solo si eres creador de alguna liga) */}
+      {isAdmin && (
+        <button
+          onClick={() => navigate('/admin')}
+          className="card mb-4 flex w-full items-center justify-between text-left transition active:scale-[0.99]"
+        >
+          <span className="flex items-center gap-3">
+            <span className="text-xl">🛠️</span>
+            <span>
+              <span className="block font-semibold text-slate-900 dark:text-white">Administración</span>
+              <span className="block text-xs text-slate-500 dark:text-slate-400">
+                Liquidar apuestas de tus ligas
+              </span>
+            </span>
+          </span>
+          <span className="text-slate-400">›</span>
+        </button>
+      )}
 
       {/* Tema */}
       <div className="card mb-4">
