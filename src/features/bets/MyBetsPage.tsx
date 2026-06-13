@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useLeague } from '../leagues/LeagueLayout'
 import { fmtChips, fmtOdds, legText } from '../../lib/format'
 import type { Bet, BetLeg } from '../../lib/database.types'
-import { localizeMatch } from '../../lib/teams'
+import { localizeMatch, withFlag } from '../../lib/teams'
 import Spinner from '../../components/Spinner'
 import { isLiveBet, passesFilter, type BetRow, type LegRow, type Filter } from './filters'
 import { captureError } from '../../lib/monitoring'
@@ -215,7 +215,7 @@ function BetCard({ bet, onCashout }: { bet: BetRow; onCashout: () => void }) {
           <div key={l.id} className="flex items-center justify-between text-sm">
             <div className="min-w-0">
               <div className="truncate text-[11px] text-slate-500">
-                {l.match ? `${l.match.home_team} vs ${l.match.away_team}` : l.match_id}
+                {l.match ? `${withFlag(l.match.home_team)} vs ${withFlag(l.match.away_team)}` : l.match_id}
                 {l.match?.status === 'finished' && (
                   <span className="ml-1 text-slate-400">
                     ({l.match.home_score}-{l.match.away_score})

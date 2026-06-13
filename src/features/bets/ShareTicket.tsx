@@ -1,6 +1,7 @@
 import { forwardRef } from 'react'
 import { toBlob } from 'html-to-image'
 import { fmtChips, fmtOdds, legText } from '../../lib/format'
+import { withFlag } from '../../lib/teams'
 import type { BetRow } from './filters'
 
 // Boleto pensado para exportar como imagen (estilos inline para que la captura
@@ -33,7 +34,7 @@ export const ShareTicket = forwardRef<HTMLDivElement, { bet: BetRow }>(function 
         {bet.legs.map((l) => (
           <div key={l.id} style={{ borderLeft: '3px solid #22c55e', paddingLeft: 10 }}>
             <div style={{ fontSize: 11, color: '#94a3b8' }}>
-              {l.match ? `${l.match.home_team} vs ${l.match.away_team}` : l.match_id}
+              {l.match ? `${withFlag(l.match.home_team)} vs ${withFlag(l.match.away_team)}` : l.match_id}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 600 }}>
               <span>

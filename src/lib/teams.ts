@@ -169,6 +169,93 @@ export function teamName(en: string): string {
   return TEAMS[en] ?? en
 }
 
+// ---------------------------------------------------------------------------
+// Banderas. Código ISO 3166-1 alfa-2 por nombre original (inglés de la API).
+// Se convierte a emoji de bandera (indicadores regionales). Inglaterra, Gales
+// y Escocia usan la secuencia especial de subdivisión.
+// ---------------------------------------------------------------------------
+const CODES: Record<string, string> = {
+  // Europa
+  Spain: 'es', France: 'fr', Germany: 'de', Portugal: 'pt', Netherlands: 'nl',
+  Belgium: 'be', Italy: 'it', Croatia: 'hr', Switzerland: 'ch', Denmark: 'dk',
+  Sweden: 'se', Norway: 'no', Poland: 'pl', Serbia: 'rs', Austria: 'at',
+  'Czech Republic': 'cz', Czechia: 'cz', Turkey: 'tr', Türkiye: 'tr', Ukraine: 'ua',
+  'Republic of Ireland': 'ie', Ireland: 'ie', 'Northern Ireland': 'gb', Greece: 'gr',
+  Hungary: 'hu', Romania: 'ro', Slovakia: 'sk', Slovenia: 'si', Russia: 'ru',
+  Finland: 'fi', Iceland: 'is', Albania: 'al', 'North Macedonia': 'mk', Montenegro: 'me',
+  'Bosnia and Herzegovina': 'ba', Bulgaria: 'bg', Kosovo: 'xk', Georgia: 'ge',
+  Armenia: 'am', Azerbaijan: 'az', Belarus: 'by', Moldova: 'md', Latvia: 'lv',
+  Lithuania: 'lt', Estonia: 'ee', Luxembourg: 'lu', Cyprus: 'cy', Malta: 'mt',
+  'Faroe Islands': 'fo', Gibraltar: 'gi', Andorra: 'ad', 'San Marino': 'sm',
+  Liechtenstein: 'li',
+
+  // Sudamérica
+  Brazil: 'br', Argentina: 'ar', Uruguay: 'uy', Colombia: 'co', Ecuador: 'ec',
+  Peru: 'pe', Chile: 'cl', Paraguay: 'py', Venezuela: 've', Bolivia: 'bo',
+
+  // Concacaf
+  'United States': 'us', USA: 'us', Mexico: 'mx', Canada: 'ca', 'Costa Rica': 'cr',
+  Panama: 'pa', Honduras: 'hn', Jamaica: 'jm', 'El Salvador': 'sv', Guatemala: 'gt',
+  'Trinidad and Tobago': 'tt', Nicaragua: 'ni', Cuba: 'cu', 'Dominican Republic': 'do',
+  Curaçao: 'cw', Haiti: 'ht', Suriname: 'sr', Guyana: 'gy', Belize: 'bz',
+
+  // África
+  Morocco: 'ma', Senegal: 'sn', Ghana: 'gh', Nigeria: 'ng', Cameroon: 'cm',
+  'Ivory Coast': 'ci', "Côte d'Ivoire": 'ci', Egypt: 'eg', Tunisia: 'tn', Algeria: 'dz',
+  'South Africa': 'za', Mali: 'ml', 'Burkina Faso': 'bf', 'DR Congo': 'cd', 'Congo DR': 'cd',
+  'Cape Verde': 'cv', Angola: 'ao', Zambia: 'zm', Kenya: 'ke', Gabon: 'ga', Guinea: 'gn',
+  Benin: 'bj', Madagascar: 'mg', Mauritania: 'mr', Namibia: 'na', 'Equatorial Guinea': 'gq',
+  Mozambique: 'mz', Tanzania: 'tz', Uganda: 'ug',
+
+  // Asia / Oceanía
+  Japan: 'jp', 'South Korea': 'kr', 'Korea Republic': 'kr', 'North Korea': 'kp',
+  'Korea DPR': 'kp', Australia: 'au', Iran: 'ir', 'IR Iran': 'ir', 'Saudi Arabia': 'sa',
+  Qatar: 'qa', Uzbekistan: 'uz', Jordan: 'jo', Iraq: 'iq', 'United Arab Emirates': 'ae',
+  UAE: 'ae', China: 'cn', 'China PR': 'cn', Indonesia: 'id', Thailand: 'th', Vietnam: 'vn',
+  India: 'in', Bahrain: 'bh', Oman: 'om', Kuwait: 'kw', Lebanon: 'lb', Syria: 'sy',
+  Palestine: 'ps', Malaysia: 'my', Philippines: 'ph', Singapore: 'sg', Myanmar: 'mm',
+  Tajikistan: 'tj', Turkmenistan: 'tm', Kyrgyzstan: 'kg', 'Hong Kong': 'hk',
+  'New Zealand': 'nz', Israel: 'il',
+}
+
+// Banderas de subdivisión (sin código alfa-2; emoji de etiqueta especial).
+const SUBFLAGS: Record<string, string> = {
+  England: '🏴\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}',
+  Scotland: '🏴\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}',
+  Wales: '🏴\u{E0067}\u{E0062}\u{E0077}\u{E006C}\u{E0073}\u{E007F}',
+}
+
+function iso2ToEmoji(code: string): string {
+  return code
+    .toUpperCase()
+    .replace(/./g, (c) => String.fromCodePoint(127397 + c.charCodeAt(0)))
+}
+
+// Bandera indexada por nombre original (inglés) y por nombre traducido,
+// para poder buscarla aunque el partido ya esté localizado.
+const FLAGS: Record<string, string> = {}
+for (const [en, code] of Object.entries(CODES)) {
+  const flag = iso2ToEmoji(code)
+  FLAGS[en] = flag
+  if (TEAMS[en]) FLAGS[TEAMS[en]] = flag
+}
+for (const [en, flag] of Object.entries(SUBFLAGS)) {
+  FLAGS[en] = flag
+  if (TEAMS[en]) FLAGS[TEAMS[en]] = flag
+}
+
+// Devuelve el emoji de bandera de una selección (acepta el nombre en inglés
+// o ya traducido). Cadena vacía si no se conoce.
+export function teamFlag(name: string): string {
+  return FLAGS[name] ?? ''
+}
+
+// "🇪🇸 España" (o solo el nombre si no hay bandera conocida).
+export function withFlag(name: string): string {
+  const f = teamFlag(name)
+  return f ? `${f} ${name}` : name
+}
+
 // Devuelve una copia del partido con los nombres de equipo en castellano.
 export function localizeMatch(m: Match): Match {
   return { ...m, home_team: teamName(m.home_team), away_team: teamName(m.away_team) }
