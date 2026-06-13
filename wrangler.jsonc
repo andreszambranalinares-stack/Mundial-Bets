@@ -1,0 +1,13 @@
+{
+  // Publica el SPA como assets estáticos en Cloudflare (Workers Static Assets).
+  // Evita la integración automática de Vite (que exige Vite >= 6): `wrangler
+  // deploy` simplemente sube la carpeta `dist` generada por `npm run build`.
+  "name": "fantasybet26",
+  "compatibility_date": "2025-06-01",
+  "assets": {
+    "directory": "./dist",
+    // Sirve index.html (200) en rutas no encontradas -> enrutado del SPA
+    // (/admin, /perfil, /l/:id/..., /unirse/:code).
+    "not_found_handling": "single-page-application"
+  }
+}
