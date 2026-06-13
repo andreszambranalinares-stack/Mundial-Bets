@@ -8,13 +8,14 @@ import { captureError } from '../../lib/monitoring'
 import type { League, Match } from '../../lib/database.types'
 import Spinner from '../../components/Spinner'
 
-// Una pata avanzada pendiente, leída de bet_legs (+ league_id vía bets).
+// Una pata avanzada pendiente, leída de bet_legs (+ league_id/user_id vía bets).
 type LegRow = {
   match_id: string
   market: string
   selection: string
   label: string | null
   player_name: string | null
+  user_id: string | null
 }
 
 // Grupo de patas idénticas (mismo mercado/selección/jugador) a liquidar de golpe.
@@ -24,6 +25,7 @@ type Group = {
   label: string | null
   player_name: string | null
   count: number
+  bettors: string[] // nombres de los participantes que hicieron esta apuesta
 }
 
 type MatchSettlement = { matchId: string; match: Match | null; groups: Group[] }
@@ -31,6 +33,13 @@ type LeagueSettlement = { league: League; matches: MatchSettlement[] }
 
 const groupKey = (g: { market: string; selection: string; player_name: string | null }) =>
   `${g.market}|${g.selection}|${g.player_name ?? ''}`
+
+// "Pepe (2), Juan" — quién apostó, agrupando repetidos.
+function formatBettors(names: string[]): string {
+  const counts = new Map<string, number>()
+  for (const n of names) counts.set(n, (counts.get(n) ?? 0) + 1)
+  return [...counts.entries()].map(([n, c]) => (c > 1 ? `${n} (${c})` : n)).join(', ')
+}
 
 export default function AdminPage() {
   const { user } = useAuth()
@@ -49,14 +58,26 @@ export default function AdminPage() {
       // Patas pendientes de toda la liga (RLS permite verlas al ser miembro).
       const { data: legs } = await supabase
         .from('bet_legs')
-        .select('match_id, market, selection, label, player_name, bets!inner(league_id)')
+        .select('match_id, market, selection, label, player_name, bets!inner(league_id, user_id)')
         .eq('bets.league_id', league.id)
         .eq('status', 'pending')
 
-      // Solo mercados avanzados: h2h/totals se liquidan solos por el marcador.
-      const advanced = ((legs ?? []) as unknown as LegRow[]).filter(
-        (l) => l.market !== 'h2h' && l.market !== 'totals',
-      )
+      // Normaliza la relación anidada `bets` (objeto en relación to-one).
+      const advanced: LegRow[] = ((legs ?? []) as unknown as Array<Record<string, unknown>>)
+        .map((r) => {
+          const rel = r.bets as { user_id: string } | { user_id: string }[] | null
+          const bet = Array.isArray(rel) ? rel[0] : rel
+          return {
+            match_id: r.match_id as string,
+            market: r.market as string,
+            selection: r.selection as string,
+            label: (r.label as string | null) ?? null,
+            player_name: (r.player_name as string | null) ?? null,
+            user_id: bet?.user_id ?? null,
+          }
+        })
+        // Solo mercados avanzados: h2h/totals se liquidan solos por el marcador.
+        .filter((l) => l.market !== 'h2h' && l.market !== 'totals')
       if (advanced.length === 0) {
         result.push({ league, matches: [] })
         continue
@@ -67,19 +88,34 @@ export default function AdminPage() {
       const { data: ms } = await supabase.from('matches').select('*').in('id', matchIds)
       const byId = new Map((ms ?? []).map((m) => [m.id, localizeMatch(m as Match)]))
 
+      // Nombres de quienes apostaron (perfiles legibles por cualquier autenticado).
+      const userIds = [...new Set(advanced.map((l) => l.user_id).filter(Boolean))] as string[]
+      const nameById = new Map<string, string>()
+      if (userIds.length > 0) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, display_name')
+          .in('id', userIds)
+        for (const p of profs ?? []) nameById.set(p.id as string, (p.display_name as string) ?? '—')
+      }
+
       // Agrupar por partido -> (mercado, selección, jugador).
       const perMatch = new Map<string, Group[]>()
       for (const l of advanced) {
         const groups = perMatch.get(l.match_id) ?? []
+        const bettor = (l.user_id && nameById.get(l.user_id)) || '—'
         const existing = groups.find((g) => groupKey(g) === groupKey(l))
-        if (existing) existing.count++
-        else
+        if (existing) {
+          existing.count++
+          existing.bettors.push(bettor)
+        } else
           groups.push({
             market: l.market,
             selection: l.selection,
             label: l.label,
             player_name: l.player_name,
             count: 1,
+            bettors: [bettor],
           })
         perMatch.set(l.match_id, groups)
       }
@@ -172,9 +208,12 @@ export default function AdminPage() {
                           .replace('Visitante', match?.away_team ?? 'Visitante')
                       return (
                         <div key={key} className="rounded-xl bg-slate-100 p-3 dark:bg-slate-800">
-                          <div className="mb-2 text-sm text-slate-700 dark:text-slate-200">
+                          <div className="text-sm text-slate-700 dark:text-slate-200">
                             {text}{' '}
                             <span className="text-xs text-slate-500">· {g.count} apuesta(s)</span>
+                          </div>
+                          <div className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+                            Apostó: {formatBettors(g.bettors)}
                           </div>
                           <div className="flex gap-2">
                             <button
