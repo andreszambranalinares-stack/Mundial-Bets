@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useLeague } from '../leagues/LeagueLayout'
 import { useBetSlip } from '../betslip/BetSlipProvider'
 import { fmtDate, fmtOdds } from '../../lib/format'
-import { localizeMatch } from '../../lib/teams'
+import { localizeMatch, withFlag } from '../../lib/teams'
 import { captureError } from '../../lib/monitoring'
 import type { AdvancedOdd, Match, MatchOdds } from '../../lib/database.types'
 import Countdown from '../../components/Countdown'
@@ -118,11 +118,11 @@ function Scoreboard({ match }: { match: Match }) {
           <div className="mb-2 text-xs font-semibold text-slate-500">FINAL</div>
         )}
         <div className="flex items-center justify-center gap-4">
-          <span className="flex-1 text-right font-semibold text-slate-900 dark:text-white">{match.home_team}</span>
+          <span className="flex-1 text-right font-semibold text-slate-900 dark:text-white">{withFlag(match.home_team)}</span>
           <span className="text-3xl font-bold text-slate-900 tabular-nums dark:text-white">
             {match.home_score ?? 0} <span className="text-slate-400">-</span> {match.away_score ?? 0}
           </span>
-          <span className="flex-1 text-left font-semibold text-slate-900 dark:text-white">{match.away_team}</span>
+          <span className="flex-1 text-left font-semibold text-slate-900 dark:text-white">{withFlag(match.away_team)}</span>
         </div>
       </div>
     )
@@ -135,7 +135,7 @@ function Scoreboard({ match }: { match: Match }) {
         <Countdown target={match.commence_time} />
       </div>
       <div className="text-lg font-bold text-slate-900 dark:text-white">
-        {match.home_team} <span className="text-slate-400">vs</span> {match.away_team}
+        {withFlag(match.home_team)} <span className="text-slate-400">vs</span> {withFlag(match.away_team)}
       </div>
     </div>
   )
@@ -158,9 +158,9 @@ function StandardMarkets({ match, odds }: { match: Match; odds: MatchOdds[] }) {
     <section className="space-y-2">
       <h3 className="px-1 text-sm font-semibold text-slate-500 dark:text-slate-300">Ganador del partido</h3>
       <div className="grid grid-cols-3 gap-2">
-        <OddBtn label={match.home_team} price={h2h('home')?.price} onPick={() => h2h('home') && pick(h2h('home')!)} active={sel(h2h('home'))} />
+        <OddBtn label={withFlag(match.home_team)} price={h2h('home')?.price} onPick={() => h2h('home') && pick(h2h('home')!)} active={sel(h2h('home'))} />
         <OddBtn label="Empate" price={h2h('draw')?.price} onPick={() => h2h('draw') && pick(h2h('draw')!)} active={sel(h2h('draw'))} />
-        <OddBtn label={match.away_team} price={h2h('away')?.price} onPick={() => h2h('away') && pick(h2h('away')!)} active={sel(h2h('away'))} />
+        <OddBtn label={withFlag(match.away_team)} price={h2h('away')?.price} onPick={() => h2h('away') && pick(h2h('away')!)} active={sel(h2h('away'))} />
       </div>
       {(over || under) && (
         <div className="grid grid-cols-2 gap-2">

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { fmtDate, fmtOdds } from '../../lib/format'
 import type { Match, MatchOdds, Selection } from '../../lib/database.types'
-import { localizeMatch } from '../../lib/teams'
+import { localizeMatch, withFlag } from '../../lib/teams'
 import Spinner from '../../components/Spinner'
 import Countdown from '../../components/Countdown'
 import { useBetSlip } from '../betslip/BetSlipProvider'
@@ -167,14 +167,14 @@ function MatchCard({ match, odds }: { match: Match; odds: MatchOdds[] }) {
         <Countdown target={match.commence_time} />
       </div>
       <div className="mb-3 font-semibold text-slate-900 dark:text-white">
-        {match.home_team} <span className="text-slate-500">vs</span> {match.away_team}
+        {withFlag(match.home_team)} <span className="text-slate-500">vs</span> {withFlag(match.away_team)}
       </div>
 
       {/* Ganador del partido (sin etiquetas 1X2: nombre del equipo / Empate) */}
       <div className="grid grid-cols-3 gap-2">
-        <OddsButton label={match.home_team} odds={h2h('home')} onPick={pick} selected={isSel(isSelected, h2h('home'))} />
+        <OddsButton label={withFlag(match.home_team)} odds={h2h('home')} onPick={pick} selected={isSel(isSelected, h2h('home'))} />
         <OddsButton label="Empate" odds={h2h('draw')} onPick={pick} selected={isSel(isSelected, h2h('draw'))} />
-        <OddsButton label={match.away_team} odds={h2h('away')} onPick={pick} selected={isSel(isSelected, h2h('away'))} />
+        <OddsButton label={withFlag(match.away_team)} odds={h2h('away')} onPick={pick} selected={isSel(isSelected, h2h('away'))} />
       </div>
 
       {/* Over/Under */}

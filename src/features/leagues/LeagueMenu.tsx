@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { League } from '../../lib/database.types'
+import { fileToSquareDataUrl } from '../../lib/image'
 import ConfirmModal from '../../components/ConfirmModal'
 
 type Modal = null | 'leave' | 'delete'
@@ -57,20 +58,22 @@ export default function LeagueMenu({
 
   async function onPickImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
+    if (e.target) e.target.value = '' // permite volver a elegir el mismo archivo
     if (!file) return
+    if (!file.type.startsWith('image/')) {
+      alert('Selecciona un archivo de imagen.')
+      return
+    }
     setOpen(false)
     setBusyImg(true)
     try {
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
-      const path = `${league.id}/img_${Date.now()}.${ext}`
-      const { error: upErr } = await supabase.storage
-        .from('league-images')
-        .upload(path, file, { upsert: true, cacheControl: '3600' })
-      if (upErr) throw upErr
-      const url = supabase.storage.from('league-images').getPublicUrl(path).data.publicUrl
+      // Redimensionamos/comprimimos en el navegador y guardamos la imagen como
+      // data URL directamente en la liga: así no depende de la configuración
+      // del bucket de Storage (causa habitual de "no funciona").
+      const dataUrl = await fileToSquareDataUrl(file, { maxSize: 256, quality: 0.82 })
       const { data, error } = await supabase.rpc('set_league_image', {
         p_league_id: league.id,
-        p_image_url: url,
+        p_image_url: dataUrl,
       })
       if (error) throw error
       onChanged(data as League)

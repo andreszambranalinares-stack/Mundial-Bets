@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useBetSlip } from './BetSlipProvider'
 import { fmtChips, fmtOdds, legText } from '../../lib/format'
+import { withFlag } from '../../lib/teams'
 import type { League } from '../../lib/database.types'
 import { combinedOdds } from './calc'
 import { captureError } from '../../lib/monitoring'
@@ -106,7 +107,7 @@ export default function BetSlip({ league, balance }: { league: League; balance: 
                     >
                       <div className="min-w-0">
                         <div className="truncate text-xs text-slate-500">
-                          {l.match.home_team} vs {l.match.away_team}
+                          {withFlag(l.match.home_team)} vs {withFlag(l.match.away_team)}
                         </div>
                         <div className="truncate text-sm font-medium text-slate-900 dark:text-white">
                           {legText(
