@@ -76,8 +76,24 @@ function Row({ label, value, highlight }: { label: string; value: string; highli
 
 // Captura el nodo como PNG y lo comparte (Web Share con archivo) o lo descarga.
 export async function shareTicket(node: HTMLElement): Promise<void> {
-  const blob = await toBlob(node, { pixelRatio: 2, cacheBust: true })
-  if (!blob) return
+  // Espera a que las fuentes estén listas para no capturar el boleto en blanco.
+  try {
+    await document.fonts?.ready
+  } catch {
+    /* algunos navegadores no exponen document.fonts: seguimos igualmente */
+  }
+
+  // html-to-image en iOS/Safari devuelve a veces una imagen vacía en la primera
+  // pasada (estilos/fuentes aún sin embeber): reintentamos un par de veces.
+  let blob: Blob | null = null
+  for (let i = 0; i < 3; i++) {
+    blob = await toBlob(node, { pixelRatio: 2, cacheBust: true })
+    if (blob && blob.size > 0) break
+  }
+  if (!blob || blob.size === 0) {
+    throw new Error('No se pudo generar la imagen del boleto')
+  }
+
   const file = new File([blob], 'boleto-fantasy-bet.png', { type: 'image/png' })
 
   const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean }
@@ -85,9 +101,10 @@ export async function shareTicket(node: HTMLElement): Promise<void> {
     try {
       await navigator.share({ files: [file], title: 'Mi boleto · Fantasy Bet' })
       return
-    } catch {
-      // El usuario canceló el diálogo de compartir: no hacemos nada.
-      return
+    } catch (err) {
+      // AbortError = el usuario cerró el diálogo: no es un error real.
+      if (err instanceof Error && err.name === 'AbortError') return
+      // Cualquier otro fallo de share: caemos a la descarga del PNG.
     }
   }
 

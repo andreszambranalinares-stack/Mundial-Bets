@@ -177,6 +177,8 @@ function BetCard({ bet, onCashout }: { bet: BetRow; onCashout: () => void }) {
       await shareTicket(ticketRef.current)
     } catch (e) {
       captureError(e, 'share_ticket')
+      const msg = e instanceof Error ? e.message : 'No se pudo compartir el boleto'
+      alert(msg)
     } finally {
       setSharing(false)
     }
