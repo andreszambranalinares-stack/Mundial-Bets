@@ -9,6 +9,7 @@ import Avatar from '../../components/Avatar'
 import LeagueMenu from './LeagueMenu'
 import { BetSlipProvider } from '../betslip/BetSlipProvider'
 import BetSlip from '../betslip/BetSlip'
+import RescueWheel from '../wheel/RescueWheel'
 
 export interface LeagueContext {
   league: League
@@ -27,6 +28,8 @@ export default function LeagueLayout() {
   const [league, setLeague] = useState<League | null>(null)
   const [balance, setBalance] = useState<number>(0)
   const [loading, setLoading] = useState(true)
+  // Ruleta de rescate: aparece al quedarte con 0 fichas.
+  const [showWheel, setShowWheel] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -76,6 +79,11 @@ export default function LeagueLayout() {
       supabase.removeChannel(channel)
     }
   }, [leagueId, user])
+
+  // Al quedarte sin fichas (saldo 0), ofrecer la ruleta de rescate.
+  useEffect(() => {
+    if (!loading && balance === 0) setShowWheel(true)
+  }, [balance, loading])
 
   if (loading || !league) {
     return (
@@ -163,6 +171,9 @@ export default function LeagueLayout() {
 
         {/* Hoja de apuesta (combinada) flotante */}
         <BetSlip league={league} balance={balance} />
+
+        {/* Ruleta de rescate al quedarte sin fichas */}
+        {showWheel && <RescueWheel leagueId={league.id} onDone={() => setShowWheel(false)} />}
       </div>
     </BetSlipProvider>
   )

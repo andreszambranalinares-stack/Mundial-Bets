@@ -266,6 +266,7 @@ export interface Database {
         Returns: Bet
       }
       cashout_prematch: { Args: { p_bet_id: string }; Returns: number }
+      spin_rescue_wheel: { Args: { p_league_id: string }; Returns: number }
       leave_league: { Args: { p_league_id: string }; Returns: undefined }
       delete_league: { Args: { p_league_id: string }; Returns: undefined }
       set_league_image: { Args: { p_league_id: string; p_image_url: string }; Returns: League }
