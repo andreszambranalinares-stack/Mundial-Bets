@@ -10,6 +10,11 @@ import type { AdvancedOdd, Match, MatchOdds } from '../../lib/database.types'
 import Countdown from '../../components/Countdown'
 import Spinner from '../../components/Spinner'
 
+// Mercados del catálogo avanzado que tratamos como apuestas DE JUGADOR aunque
+// en la BD figuren como needs_player=false (estadísticas individuales). Al
+// apostar se pide el futbolista y así aparece luego al liquidar.
+const PLAYER_MARKETS = new Set<string>(['shots_over'])
+
 export default function MatchDetailPage() {
   const { matchId } = useParams()
   const { league, userId } = useLeague()
@@ -32,7 +37,13 @@ export default function MatchDetailPage() {
         supabase.from('advanced_odds').select('*').order('sort', { ascending: true }),
       ])
       setOdds((o ?? []) as MatchOdds[])
-      setAdv((a ?? []) as AdvancedOdd[])
+      // Mercados que tratamos como "de jugador" aunque el catálogo no lo marque
+      // (p. ej. tiros a puerta es una estadística individual): así al apostar se
+      // pide el futbolista y aparece al liquidar.
+      setAdv((a ?? []).map((x) => {
+        const ao = x as AdvancedOdd
+        return PLAYER_MARKETS.has(ao.market) ? { ...ao, needs_player: true } : ao
+      }))
       setLoading(false)
     }
     load()
