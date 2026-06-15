@@ -81,8 +81,9 @@ export default function LeagueLayout() {
   }, [leagueId, user])
 
   // Al quedarte sin fichas (saldo 0), ofrecer la ruleta de rescate.
+  // Number(): el saldo puede llegar como texto ("0") desde la BD/realtime.
   useEffect(() => {
-    if (!loading && balance === 0) setShowWheel(true)
+    if (!loading && Number(balance) <= 0) setShowWheel(true)
   }, [balance, loading])
 
   if (loading || !league) {
