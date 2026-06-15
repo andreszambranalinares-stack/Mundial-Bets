@@ -5,6 +5,7 @@ import { useLeague } from '../leagues/LeagueLayout'
 import { useBetSlip } from '../betslip/BetSlipProvider'
 import { fmtDate, fmtOdds } from '../../lib/format'
 import { localizeMatch, withFlag } from '../../lib/teams'
+import { playersForMatch } from '../../lib/squads'
 import { captureError } from '../../lib/monitoring'
 import type { AdvancedOdd, Match, MatchOdds } from '../../lib/database.types'
 import Countdown from '../../components/Countdown'
@@ -190,9 +191,12 @@ function AdvancedMarkets({ match, adv }: { match: Match; adv: AdvancedOdd[] }) {
   const categories = useMemo(() => [...new Set(adv.map((a) => a.category))], [adv])
   const [active, setActive] = useState(categories[0])
   const [player, setPlayer] = useState('')
+  // Jugadores sugeridos de los dos equipos del partido (autocompletado).
+  const suggestions = useMemo(() => playersForMatch(match.home_team, match.away_team), [match])
 
   const options = adv.filter((a) => a.category === active)
   const needsPlayer = options.some((o) => o.needs_player)
+  const listId = `players-${match.id}`
 
   return (
     <section className="space-y-3">
@@ -219,12 +223,23 @@ function AdvancedMarkets({ match, adv }: { match: Match; adv: AdvancedOdd[] }) {
       </div>
 
       {needsPlayer && (
-        <input
-          className="input"
-          placeholder="Nombre del jugador"
-          value={player}
-          onChange={(e) => setPlayer(e.target.value)}
-        />
+        <>
+          <input
+            className="input"
+            placeholder="Nombre del jugador"
+            value={player}
+            onChange={(e) => setPlayer(e.target.value)}
+            list={suggestions.length > 0 ? listId : undefined}
+            autoComplete="off"
+          />
+          {suggestions.length > 0 && (
+            <datalist id={listId}>
+              {suggestions.map((p) => (
+                <option key={p} value={p} />
+              ))}
+            </datalist>
+          )}
+        </>
       )}
 
       <div className="grid grid-cols-2 gap-2">
