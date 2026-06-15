@@ -9,3 +9,6 @@ dist-ssr
 !.vscode/extensions.json
 supabase/.branches
 supabase/.temp
+
+# Artefacto incremental de TypeScript (se regenera en cada build)
+tsconfig.tsbuildinfo
