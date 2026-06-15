@@ -7,10 +7,11 @@
 -- ============================================================================
 
 -- 1. Permitir el tipo 'wheel' en el ledger de transacciones.
+--    Se mantienen todos los tipos existentes (incl. 'cashout' de la 0003).
 alter table public.transactions drop constraint if exists transactions_type_check;
 alter table public.transactions
   add constraint transactions_type_check
-  check (type in ('initial','stake','payout','refund','wheel'));
+  check (type in ('initial','stake','payout','refund','cashout','wheel'));
 
 -- 2. RPC: girar la ruleta de rescate.
 --    Premios y probabilidades (deben coincidir con el frontend):
