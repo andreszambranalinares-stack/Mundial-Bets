@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useLeague } from '../leagues/LeagueLayout'
@@ -196,7 +196,6 @@ function AdvancedMarkets({ match, adv }: { match: Match; adv: AdvancedOdd[] }) {
 
   const options = adv.filter((a) => a.category === active)
   const needsPlayer = options.some((o) => o.needs_player)
-  const listId = `players-${match.id}`
 
   return (
     <section className="space-y-3">
@@ -223,23 +222,7 @@ function AdvancedMarkets({ match, adv }: { match: Match; adv: AdvancedOdd[] }) {
       </div>
 
       {needsPlayer && (
-        <>
-          <input
-            className="input"
-            placeholder="Nombre del jugador"
-            value={player}
-            onChange={(e) => setPlayer(e.target.value)}
-            list={suggestions.length > 0 ? listId : undefined}
-            autoComplete="off"
-          />
-          {suggestions.length > 0 && (
-            <datalist id={listId}>
-              {suggestions.map((p) => (
-                <option key={p} value={p} />
-              ))}
-            </datalist>
-          )}
-        </>
+        <PlayerAutocomplete value={player} onChange={setPlayer} suggestions={suggestions} />
       )}
 
       <div className="grid grid-cols-2 gap-2">
@@ -248,6 +231,198 @@ function AdvancedMarkets({ match, adv }: { match: Match; adv: AdvancedOdd[] }) {
         ))}
       </div>
     </section>
+  )
+}
+
+// Quita acentos/diacríticos para que el filtro encuentre "nunez" → "Núñez".
+function normalize(s: string) {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+}
+
+// Autocompletado de jugadores con estilo propio (reemplaza al <datalist>
+// nativo del navegador, que no es estilizable). Soporta filtrado en vivo,
+// navegación con teclado y resaltado de la coincidencia.
+function PlayerAutocomplete({
+  value,
+  onChange,
+  suggestions,
+}: {
+  value: string
+  onChange: (v: string) => void
+  suggestions: string[]
+}) {
+  const [open, setOpen] = useState(false)
+  const [highlight, setHighlight] = useState(0)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLUListElement>(null)
+
+  const query = normalize(value)
+  const filtered = useMemo(() => {
+    if (suggestions.length === 0) return []
+    if (!query) return suggestions
+    return suggestions.filter((p) => normalize(p).includes(query))
+  }, [suggestions, query])
+
+  // Cerrar al hacer clic fuera del componente.
+  useEffect(() => {
+    if (!open) return
+    function onDocClick(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [open])
+
+  // Mantener visible la opción resaltada al navegar con flechas.
+  useEffect(() => {
+    if (!open || !listRef.current) return
+    const el = listRef.current.children[highlight] as HTMLElement | undefined
+    el?.scrollIntoView({ block: 'nearest' })
+  }, [highlight, open])
+
+  function choose(name: string) {
+    onChange(name)
+    setOpen(false)
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!open && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      setOpen(true)
+      return
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setHighlight((h) => Math.min(h + 1, filtered.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setHighlight((h) => Math.max(h - 1, 0))
+    } else if (e.key === 'Enter') {
+      if (open && filtered[highlight]) {
+        e.preventDefault()
+        choose(filtered[highlight])
+      }
+    } else if (e.key === 'Escape') {
+      setOpen(false)
+    }
+  }
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <div className="relative">
+        <svg
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
+        </svg>
+        <input
+          className="input pl-9 pr-9"
+          placeholder="Buscar jugador…"
+          value={value}
+          autoComplete="off"
+          onChange={(e) => {
+            onChange(e.target.value)
+            setOpen(true)
+            setHighlight(0)
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={onKeyDown}
+        />
+        {value ? (
+          <button
+            type="button"
+            aria-label="Borrar"
+            onClick={() => {
+              onChange('')
+              setOpen(true)
+            }}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition hover:bg-slate-200 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        ) : (
+          suggestions.length > 0 && (
+            <svg
+              className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition dark:text-slate-500"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ transform: open ? 'translateY(-50%) rotate(180deg)' : 'translateY(-50%)' }}
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          )
+        )}
+      </div>
+
+      {open && suggestions.length > 0 && (
+        <ul
+          ref={listRef}
+          className="absolute z-20 mt-1.5 max-h-60 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-xl shadow-black/10 dark:border-slate-700 dark:bg-slate-800 dark:shadow-black/40"
+        >
+          {filtered.length === 0 ? (
+            <li className="px-3 py-2 text-sm text-slate-400 dark:text-slate-500">Sin coincidencias</li>
+          ) : (
+            filtered.map((p, i) => {
+              const idx = normalize(p).indexOf(query)
+              const matchLen = query.length
+              return (
+                <li key={p}>
+                  <button
+                    type="button"
+                    onMouseEnter={() => setHighlight(i)}
+                    onClick={() => choose(p)}
+                    className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition ${
+                      i === highlight
+                        ? 'bg-brand/15 text-slate-900 dark:text-white'
+                        : 'text-slate-700 dark:text-slate-200'
+                    }`}
+                  >
+                    <span
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                        i === highlight
+                          ? 'bg-brand text-slate-900'
+                          : 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      {p.slice(0, 1)}
+                    </span>
+                    <span className="truncate">
+                      {query && idx >= 0 ? (
+                        <>
+                          {p.slice(0, idx)}
+                          <mark className="bg-transparent font-semibold text-brand">
+                            {p.slice(idx, idx + matchLen)}
+                          </mark>
+                          {p.slice(idx + matchLen)}
+                        </>
+                      ) : (
+                        p
+                      )}
+                    </span>
+                  </button>
+                </li>
+              )
+            })
+          )}
+        </ul>
+      )}
+    </div>
   )
 }
 

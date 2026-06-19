@@ -32,9 +32,10 @@ describe('passesFilter', () => {
     expect(passesFilter(pending, 'pending')).toBe(true)
     expect(passesFilter(live, 'pending')).toBe(false)
   })
-  it('"live" solo muestra las que están en directo', () => {
-    expect(passesFilter(live, 'live')).toBe(true)
-    expect(passesFilter(pending, 'live')).toBe(false)
+  it('"won" solo muestra las apuestas ganadas', () => {
+    expect(passesFilter(won, 'won')).toBe(true)
+    expect(passesFilter(pending, 'won')).toBe(false)
+    expect(passesFilter(bet('lost', ['finished']), 'won')).toBe(false)
   })
   it('"closed" muestra ganadas/perdidas/anuladas/retiradas', () => {
     expect(passesFilter(won, 'closed')).toBe(true)
