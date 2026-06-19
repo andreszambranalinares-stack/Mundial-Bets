@@ -105,8 +105,8 @@ export default function MyBetsPage() {
       <div className="flex gap-2 overflow-x-auto pb-1">
         <FilterBtn active={filter === 'all'} onClick={() => setFilter('all')}>Todas</FilterBtn>
         <FilterBtn active={filter === 'pending'} onClick={() => setFilter('pending')}>Pendientes</FilterBtn>
-        <FilterBtn active={filter === 'live'} onClick={() => setFilter('live')}>
-          <LiveDot /> En directo
+        <FilterBtn active={filter === 'won'} onClick={() => setFilter('won')}>
+          <span className="text-brand">✓</span> Ganadas
         </FilterBtn>
         <FilterBtn active={filter === 'closed'} onClick={() => setFilter('closed')}>Cerradas</FilterBtn>
       </div>

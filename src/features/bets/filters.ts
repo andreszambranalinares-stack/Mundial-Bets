@@ -3,7 +3,7 @@ import type { Bet, BetLeg, Match } from '../../lib/database.types'
 
 export type LegRow = BetLeg & { match?: Match }
 export type BetRow = Bet & { legs: LegRow[] }
-export type Filter = 'all' | 'pending' | 'live' | 'closed'
+export type Filter = 'all' | 'pending' | 'won' | 'closed'
 
 // Estados de boleto que se consideran "cerrados" (ya no pendientes).
 export const CLOSED = new Set(['won', 'lost', 'void', 'cashed_out'])
@@ -19,7 +19,7 @@ export function isLiveBet(bet: FilterableBet): boolean {
 
 export function passesFilter(bet: FilterableBet, f: Filter): boolean {
   if (f === 'all') return !CLOSED.has(bet.status)
-  if (f === 'live') return isLiveBet(bet)
+  if (f === 'won') return bet.status === 'won'
   if (f === 'pending') return bet.status === 'pending' && !isLiveBet(bet)
   return CLOSED.has(bet.status)
 }
