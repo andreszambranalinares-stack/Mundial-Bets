@@ -31,29 +31,6 @@ html.dark body {
   color: #e2e8f0;
 }
 
-/* Caída de la bola de la ruleta: orbita en el aro y al final cae a la casilla.
-   Los píxeles deben coincidir con BALL_TRACK/BALL_REST de RouletteWheel.tsx. */
-@keyframes rw-ball-drop {
-  0% {
-    transform: translate(-50%, -50%) translateY(-137px);
-  }
-  58% {
-    transform: translate(-50%, -50%) translateY(-137px);
-  }
-  78% {
-    transform: translate(-50%, -50%) translateY(-99px);
-  }
-  88% {
-    transform: translate(-50%, -50%) translateY(-107px);
-  }
-  100% {
-    transform: translate(-50%, -50%) translateY(-103px);
-  }
-}
-.rw-ball-drop {
-  animation: rw-ball-drop 5s cubic-bezier(0.33, 0, 0.2, 1) forwards;
-}
-
 @layer components {
   .btn {
     @apply inline-flex items-center justify-center rounded-xl px-4 py-2.5 font-semibold transition active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100;

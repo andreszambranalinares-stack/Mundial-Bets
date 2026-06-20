@@ -2,18 +2,9 @@ import { useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { captureError } from '../../lib/monitoring'
 import { fmtChips } from '../../lib/format'
-import {
-  CHIP_VALUES,
-  WHEEL_ORDER,
-  betWins,
-  colorOf,
-  keyToServerBet,
-  shortChip,
-} from '../../lib/roulette'
+import { CHIP_VALUES, betWins, colorOf, keyToServerBet, shortChip } from '../../lib/roulette'
 import { useLeague } from '../leagues/LeagueLayout'
 import RouletteWheel from './RouletteWheel'
-
-const STEP = 360 / WHEEL_ORDER.length
 
 const TOP_ROW = Array.from({ length: 12 }, (_, i) => (i + 1) * 3) // 3,6,...,36
 const MID_ROW = Array.from({ length: 12 }, (_, i) => (i + 1) * 3 - 1) // 2,5,...,35
@@ -36,11 +27,10 @@ export default function RoulettePage() {
   const [result, setResult] = useState<Result | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const [rotation, setRotation] = useState(0)
-  const [ballRot, setBallRot] = useState(0)
-  const [spinKey, setSpinKey] = useState(0)
-  const rotRef = useRef(0)
-  const ballRef = useRef(0)
+  // La rueda gira sola; al apostar incrementamos spinToken para lanzar la bola.
+  const [spinToken, setSpinToken] = useState(0)
+  const [targetNumber, setTargetNumber] = useState<number | null>(null)
+  const pendingResult = useRef<Result | null>(null)
 
   const total = useMemo(() => Object.values(bets).reduce((s, x) => s + x, 0), [bets])
   const winningNumber = result?.number ?? null
@@ -82,22 +72,16 @@ export default function RoulettePage() {
     }
     const res = data as { number: number; payout: number; stake: number; balance: number }
 
-    // Llevar la casilla ganadora arriba (bajo la flecha) + varias vueltas.
-    const idx = WHEEL_ORDER.indexOf(res.number)
-    const desired = (360 - ((idx * STEP) % 360) + 360) % 360
-    const next = Math.ceil((rotRef.current + 360 * 6) / 360) * 360 + desired
-    rotRef.current = next
-    setRotation(next)
-    // La bola orbita en sentido contrario y termina arriba, sobre la ganadora.
-    ballRef.current -= 360 * 8
-    setBallRot(ballRef.current)
-    setSpinKey((k) => k + 1)
+    // Lanzamos la bola hacia el número ganador; el resultado se revela en onSettled.
+    pendingResult.current = { number: res.number, net: res.payout - res.stake }
+    setTargetNumber(res.number)
+    setSpinToken((t) => t + 1)
+  }
 
-    window.setTimeout(() => {
-      setSpinning(false)
-      setResult({ number: res.number, net: res.payout - res.stake })
-      setBets({}) // las fichas ya se resolvieron en el servidor
-    }, 5000)
+  function onSettled() {
+    setSpinning(false)
+    if (pendingResult.current) setResult(pendingResult.current)
+    setBets({}) // las fichas ya se resolvieron en el servidor
   }
 
   return (
@@ -110,7 +94,7 @@ export default function RoulettePage() {
         </div>
       </div>
 
-      <RouletteWheel rotation={rotation} ballRot={ballRot} spinning={spinning} spinKey={spinKey} />
+      <RouletteWheel spinToken={spinToken} targetNumber={targetNumber} onSettled={onSettled} />
 
       {/* Resultado de la última tirada */}
       {result && (
@@ -329,7 +313,7 @@ function Cell({
     >
       {children}
       {amount != null && (
-        <span className="absolute -bottom-1 -right-1 z-20 flex h-4 min-w-[16px] items-center justify-center rounded-full border border-white bg-amber-400 px-0.5 text-[8px] font-bold text-slate-900">
+        <span className="pointer-events-none absolute left-1/2 top-1/2 z-20 flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-amber-400 text-[8px] font-bold leading-none text-slate-900 shadow-md">
           {shortChip(amount)}
         </span>
       )}
