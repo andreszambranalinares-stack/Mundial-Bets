@@ -120,6 +120,7 @@ export default function LeagueLayout() {
           <SideTab to={`/l/${league.id}/partidos`} label="Partidos" icon="⚽️" />
           <SideTab to={`/l/${league.id}/apuestas`} label="Apuestas" icon="🎫" />
           <SideTab to={`/l/${league.id}/quinielas`} label="Quinielas" icon="📋" />
+          <SideTab to={`/l/${league.id}/ruleta`} label="Ruleta" icon="🎰" />
           <SideTab to={`/l/${league.id}/ranking`} label="Ranking" icon="🏆" />
           <SideTab to={`/l/${league.id}/chat`} label="Chat" icon="💬" />
           <SideTab to={`/l/${league.id}/actividad`} label="Actividad" icon="🔔" />
@@ -159,10 +160,11 @@ export default function LeagueLayout() {
           className="fixed bottom-0 left-1/2 z-10 w-full max-w-md -translate-x-1/2 border-t border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 md:hidden"
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
-          <div className="grid grid-cols-7">
+          <div className="grid grid-cols-8">
             <Tab to={`/l/${league.id}/partidos`} label="Partidos" icon="⚽️" />
             <Tab to={`/l/${league.id}/apuestas`} label="Apuestas" icon="🎫" />
             <Tab to={`/l/${league.id}/quinielas`} label="Quini." icon="📋" />
+            <Tab to={`/l/${league.id}/ruleta`} label="Ruleta" icon="🎰" />
             <Tab to={`/l/${league.id}/ranking`} label="Ranking" icon="🏆" />
             <Tab to={`/l/${league.id}/chat`} label="Chat" icon="💬" />
             <Tab to={`/l/${league.id}/actividad`} label="Activid." icon="🔔" />

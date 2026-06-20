@@ -11,6 +11,7 @@ import MatchDetailPage from './features/matches/MatchDetailPage'
 import MyBetsPage from './features/bets/MyBetsPage'
 import PoolsPage from './features/pools/PoolsPage'
 import PoolDetailPage from './features/pools/PoolDetailPage'
+import RoulettePage from './features/roulette/RoulettePage'
 import LeaderboardPage from './features/leaderboard/LeaderboardPage'
 import ChatPage from './features/chat/ChatPage'
 import ActivityPage from './features/activity/ActivityPage'
@@ -110,6 +111,7 @@ export default function App() {
         <Route path="apuestas" element={<MyBetsPage />} />
         <Route path="quinielas" element={<PoolsPage />} />
         <Route path="quinielas/:poolId" element={<PoolDetailPage />} />
+        <Route path="ruleta" element={<RoulettePage />} />
         <Route path="ranking" element={<LeaderboardPage />} />
         <Route path="chat" element={<ChatPage />} />
         <Route path="actividad" element={<ActivityPage />} />
