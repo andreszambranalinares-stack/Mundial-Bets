@@ -19,13 +19,23 @@ export function colorOf(n: number): Color {
 // Denominaciones de ficha disponibles en la mesa.
 export const CHIP_VALUES = [10, 50, 100, 500, 1000]
 
-export type ServerBet = { type: string; value?: number; amount: number }
+export type ServerBet = { type: string; value?: number; nums?: number[]; amount: number }
 
 // Una apuesta se identifica en el cliente por una clave:
-//   "n:17" número pleno · "dozen:1" docena · "column:3" columna ·
+//   "g:17" pleno · "g:1-2" caballo · "g:1-2-3" calle · "g:1-2-4-5" cuadro ·
+//   "g:1-2-3-4-5-6" línea · "g:0-1-2-3" basket  (apuestas a números) ·
+//   "dozen:1" docena · "column:3" columna ·
 //   "red"|"black"|"even"|"odd"|"low"|"high" apuestas exteriores.
+export function gkey(nums: number[]): string {
+  return 'g:' + [...nums].sort((a, b) => a - b).join('-')
+}
+
+function keyNums(key: string): number[] {
+  return key.slice(2).split('-').map(Number)
+}
+
 export function keyToServerBet(key: string, amount: number): ServerBet {
-  if (key.startsWith('n:')) return { type: 'straight', value: Number(key.slice(2)), amount }
+  if (key.startsWith('g:')) return { type: 'numbers', nums: keyNums(key), amount }
   if (key.startsWith('dozen:')) return { type: 'dozen', value: Number(key.slice(6)), amount }
   if (key.startsWith('column:')) return { type: 'column', value: Number(key.slice(7)), amount }
   return { type: key, amount }
@@ -33,7 +43,7 @@ export function keyToServerBet(key: string, amount: number): ServerBet {
 
 // ¿Gana esta apuesta con el número que ha salido? (para resaltar el resultado)
 export function betWins(key: string, n: number): boolean {
-  if (key.startsWith('n:')) return Number(key.slice(2)) === n
+  if (key.startsWith('g:')) return keyNums(key).includes(n)
   if (key.startsWith('dozen:')) {
     const v = Number(key.slice(6))
     return n >= (v - 1) * 12 + 1 && n <= v * 12
