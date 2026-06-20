@@ -268,7 +268,10 @@ export interface Database {
       cashout_prematch: { Args: { p_bet_id: string }; Returns: number }
       spin_rescue_wheel: { Args: { p_league_id: string }; Returns: number }
       play_roulette: {
-        Args: { p_league_id: string; p_bets: { type: string; value?: number; amount: number }[] }
+        Args: {
+          p_league_id: string
+          p_bets: { type: string; value?: number; nums?: number[]; amount: number }[]
+        }
         Returns: { number: number; payout: number; stake: number; balance: number }
       }
       leave_league: { Args: { p_league_id: string }; Returns: undefined }
