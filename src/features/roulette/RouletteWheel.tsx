@@ -1,8 +1,10 @@
+import { useEffect, useRef } from 'react'
 import { WHEEL_ORDER, colorOf } from '../../lib/roulette'
 
-// Rueda europea presentacional: gira según `rotation` y la bola orbita según
-// `ballRot` (en grados). La caída de la bola la controla la clase CSS
-// `rw-ball-drop` (ver index.css), que se reinicia cambiando `spinKey`.
+// Rueda europea que gira SIEMPRE a velocidad constante (como un casino real).
+// Al cambiar `spinToken` se "lanza" la bola: orbita, decelera, cae con rebote
+// y queda enganchada a la casilla ganadora girando junto con la rueda.
+// Avisa con `onSettled()` cuando la bola se ha posado.
 
 const CX = 150
 const CY = 150
@@ -11,7 +13,13 @@ const RIM_IN = 132
 const POCKET_OUT = 128
 const POCKET_IN = 84
 const HUB_OUT = 84
-const STEP = 360 / WHEEL_ORDER.length // grados por casilla
+const STEP = 360 / WHEEL_ORDER.length
+
+const BALL_TRACK = 134 // radio mientras orbita en el aro
+const BALL_REST = 106 // radio dentro de la casilla
+const WHEEL_OMEGA = 360 / 9000 // grados/ms -> una vuelta cada 9 s
+const SPIN_MS = 5600 // duración del lanzamiento de la bola
+const BALL_REVS = 6 // vueltas (aprox.) que da la bola antes de posarse
 
 const POCKET_FILL: Record<string, string> = {
   green: '#15803d',
@@ -22,6 +30,26 @@ const POCKET_FILL: Record<string, string> = {
 function pointFor(angleDeg: number, radius: number) {
   const t = ((angleDeg - 90) * Math.PI) / 180
   return { x: CX + radius * Math.cos(t), y: CY + radius * Math.sin(t) }
+}
+
+function easeOutCubic(p: number) {
+  return 1 - Math.pow(1 - p, 3)
+}
+
+function easeOutBounce(x: number) {
+  const n1 = 7.5625
+  const d1 = 2.75
+  if (x < 1 / d1) return n1 * x * x
+  if (x < 2 / d1) {
+    x -= 1.5 / d1
+    return n1 * x * x + 0.75
+  }
+  if (x < 2.5 / d1) {
+    x -= 2.25 / d1
+    return n1 * x * x + 0.9375
+  }
+  x -= 2.625 / d1
+  return n1 * x * x + 0.984375
 }
 
 const ARCS = WHEEL_ORDER.map((num, i) => {
@@ -44,16 +72,96 @@ const ARCS = WHEEL_ORDER.map((num, i) => {
 })
 
 export default function RouletteWheel({
-  rotation,
-  ballRot,
-  spinning,
-  spinKey,
+  spinToken,
+  targetNumber,
+  onSettled,
 }: {
-  rotation: number
-  ballRot: number
-  spinning: boolean
-  spinKey: number
+  spinToken: number
+  targetNumber: number | null
+  onSettled: () => void
 }) {
+  const svgRef = useRef<SVGSVGElement>(null)
+  const ballWrapRef = useRef<HTMLDivElement>(null)
+  const ballRadRef = useRef<HTMLDivElement>(null)
+
+  // Estado de animación (en refs para no re-renderizar cada frame).
+  const wheelAngle = useRef(0)
+  const ballAngle = useRef(0)
+  const phase = useRef<'idle' | 'spinning' | 'settled'>('idle')
+  const launchStart = useRef(0)
+  const ballStart = useRef(0)
+  const ballFinal = useRef(0)
+  const pocketAngle = useRef(0)
+  const settledNotified = useRef(false)
+  const onSettledRef = useRef(onSettled)
+  onSettledRef.current = onSettled
+
+  // Bucle de animación: la rueda gira siempre.
+  useEffect(() => {
+    let raf = 0
+    let last = performance.now()
+    const tick = (now: number) => {
+      const dt = now - last
+      last = now
+
+      wheelAngle.current += WHEEL_OMEGA * dt
+      if (svgRef.current) svgRef.current.style.transform = `rotate(${wheelAngle.current}deg)`
+
+      const wrap = ballWrapRef.current
+      const rad = ballRadRef.current
+      if (wrap && rad) {
+        if (phase.current === 'idle') {
+          wrap.style.opacity = '0'
+        } else if (phase.current === 'spinning') {
+          wrap.style.opacity = '1'
+          const p = Math.min(1, (now - launchStart.current) / SPIN_MS)
+          const e = easeOutCubic(p)
+          ballAngle.current = ballStart.current + (ballFinal.current - ballStart.current) * e
+          let r = BALL_TRACK
+          if (p > 0.5) {
+            const q = (p - 0.5) / 0.5
+            r = BALL_TRACK + (BALL_REST - BALL_TRACK) * easeOutBounce(q)
+          }
+          wrap.style.transform = `rotate(${ballAngle.current}deg)`
+          rad.style.transform = `translate(-50%, -50%) translateY(-${r}px)`
+          if (p >= 1 && !settledNotified.current) {
+            settledNotified.current = true
+            phase.current = 'settled'
+            onSettledRef.current()
+          }
+        } else {
+          // Posada: la bola gira solidaria con la rueda sobre la casilla ganadora.
+          wrap.style.opacity = '1'
+          ballAngle.current = wheelAngle.current + pocketAngle.current
+          wrap.style.transform = `rotate(${ballAngle.current}deg)`
+          rad.style.transform = `translate(-50%, -50%) translateY(-${BALL_REST}px)`
+        }
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [])
+
+  // Lanzar la bola cuando llega un nuevo resultado.
+  useEffect(() => {
+    if (spinToken === 0 || targetNumber == null) return
+    const idx = WHEEL_ORDER.indexOf(targetNumber)
+    pocketAngle.current = idx * STEP
+    // Dónde estará la casilla ganadora cuando la bola se pose.
+    const wheelAtSettle = wheelAngle.current + WHEEL_OMEGA * SPIN_MS
+    const target = wheelAtSettle + pocketAngle.current
+    ballStart.current = ballAngle.current
+    // La bola gira en sentido contrario (ángulo decreciente) varias vueltas y
+    // acaba justo sobre la casilla (mismo ángulo módulo 360).
+    let final = target - 360 * BALL_REVS
+    while (final > ballStart.current - 360 * 2) final -= 360
+    ballFinal.current = final
+    launchStart.current = performance.now()
+    settledNotified.current = false
+    phase.current = 'spinning'
+  }, [spinToken, targetNumber])
+
   return (
     <div
       className="relative mx-auto h-[300px] w-[300px] rounded-full"
@@ -62,26 +170,11 @@ export default function RouletteWheel({
         boxShadow: '0 18px 40px rgba(0,0,0,0.55), inset 0 0 30px rgba(0,0,0,0.6), 0 0 0 6px #0b1220',
       }}
     >
-      {/* Flecha indicadora arriba */}
-      <div
-        className="absolute left-1/2 top-[-10px] z-30 -translate-x-1/2"
-        style={{
-          width: 0,
-          height: 0,
-          borderLeft: '11px solid transparent',
-          borderRight: '11px solid transparent',
-          borderTop: '20px solid #f1f5f9',
-          filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.5))',
-        }}
-      />
-
       <svg
+        ref={svgRef}
         viewBox="0 0 300 300"
         className="h-full w-full"
-        style={{
-          transform: `rotate(${rotation}deg)`,
-          transition: spinning ? 'transform 5s cubic-bezier(0.12,0.62,0.07,1)' : 'none',
-        }}
+        style={{ transformBox: 'view-box', transformOrigin: 'center' }}
       >
         <defs>
           <radialGradient id="rouHub" cx="50%" cy="40%" r="65%">
@@ -166,18 +259,12 @@ export default function RouletteWheel({
         <circle cx={CX} cy={CY} r={9} fill="#0b1220" />
       </svg>
 
-      {/* Bola: orbita en su contenedor y cae con la animación rw-ball-drop */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          transform: `rotate(${ballRot}deg)`,
-          transition: spinning ? 'transform 5s cubic-bezier(0.18,0.7,0.12,1)' : 'none',
-        }}
-      >
+      {/* Bola (su posición la controla el bucle de animación) */}
+      <div ref={ballWrapRef} className="pointer-events-none absolute inset-0" style={{ opacity: 0 }}>
         <div
-          key={spinKey}
-          className={`absolute left-1/2 top-1/2 ${spinKey > 0 ? 'rw-ball-drop' : ''}`}
-          style={{ transform: 'translate(-50%, -50%) translateY(-137px)' }}
+          ref={ballRadRef}
+          className="absolute left-1/2 top-1/2"
+          style={{ transform: 'translate(-50%, -50%) translateY(-134px)' }}
         >
           <div
             style={{
