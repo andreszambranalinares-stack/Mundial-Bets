@@ -11,6 +11,10 @@ import { BetSlipProvider } from '../betslip/BetSlipProvider'
 import BetSlip from '../betslip/BetSlip'
 import RescueWheel from '../wheel/RescueWheel'
 
+// Saldo por debajo del cual se ofrece la ruleta de rescate (mínimo para
+// apostar). Debe coincidir con el umbral del servidor (migración 0019).
+const RESCUE_THRESHOLD = 10
+
 export interface LeagueContext {
   league: League
   balance: number
@@ -80,10 +84,13 @@ export default function LeagueLayout() {
     }
   }, [leagueId, user])
 
-  // Al quedarte sin fichas (saldo 0), ofrecer la ruleta de rescate.
-  // Number(): el saldo puede llegar como texto ("0") desde la BD/realtime.
+  // Al quedarte (casi) sin fichas, ofrecer la ruleta de rescate: salta cuando el
+  // saldo está por debajo del mínimo para apostar (la ficha más pequeña es 10),
+  // no solo en 0, para no dejar al jugador bloqueado. Debe coincidir con el
+  // umbral del servidor (migración 0019). Number(): el saldo puede llegar como
+  // texto desde la BD/realtime.
   useEffect(() => {
-    if (!loading && Number(balance) <= 0) setShowWheel(true)
+    if (!loading && Number(balance) < RESCUE_THRESHOLD) setShowWheel(true)
   }, [balance, loading])
 
   if (loading || !league) {
